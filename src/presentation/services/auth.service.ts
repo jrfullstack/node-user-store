@@ -3,15 +3,18 @@
 //* Validaciones y almacenamiento en la base de datos
 
 
-import { JwtAdapter, bcryptAdapter } from '../../config';
+import { JwtAdapter, bcryptAdapter, envs } from '../../config';
 import { UserModel } from '../../data';
 import { UserEntity, RegisterUserDto, CustomError, LoginUserDto } from '../../domain';
+import { EmailService } from './email.service';
 
 
 export class AuthService {
 
   // DI
-  constructor(){}
+  constructor(
+    private readonly emailService: EmailService,
+  ){}
 
   public async registerUser(registerUserDto: RegisterUserDto){
 
@@ -27,13 +30,19 @@ export class AuthService {
 
       // Guardamos el usurio
       await user.save();
+
+      // Email de verificacion
+      await this.sendEmailValidationLink(user.email);
       
       // Sacamos la password para q no la retorne al front
-      const {password, ...userEntity} = UserEntity.fromObject(user)
+      const {password, ...userEntity} = UserEntity.fromObject(user);
+
+      const token = await JwtAdapter.generateToken({id: user.id});
+      if (!token) throw CustomError.internalServer('Error while creating JWT');
 
       return {
         user: userEntity,
-        token: 'ABC'
+        token,
       };
       
     } catch (error) {
@@ -63,6 +72,50 @@ export class AuthService {
       token,
     }
     
+  }
+
+  private sendEmailValidationLink = async(email: string) => {
+
+    const token = await JwtAdapter.generateToken({email});
+    if(!token) throw CustomError.internalServer('Error getting token');
+
+    const link = `${envs.WEBSERVICE_URL}/auth/validate-email/${token}`;
+
+    const html = `
+      <h1>Validate your email</h1>
+      <p>Click on the following link to validate your email</p>
+      <a href="${ link }">Validate your email: ${ email }</a>
+    `;
+
+    const options = {
+      to: email,
+      subject: 'Validate your email',
+      htmlBody: html,
+    }
+
+    const isSent = await this.emailService.sendEmail(options);
+    if ( !isSent ) throw CustomError.internalServer('Error sending email');
+
+    return true;
+
+  }
+
+  public validateEmail = async(token: string) => {
+
+    const payload = await JwtAdapter.validateToken(token);
+    if (!payload) throw CustomError.unauthorized('Invalid token');
+    
+    const {email} = payload as {email: string};
+    if(!email) throw CustomError.internalServer('Error not in token');
+
+    const user = await UserModel.findOne({email});
+    if(!user) throw CustomError.internalServer('Email not exist');
+
+    user.emailValidated = true;
+    await user.save();
+
+    return true;
+
   }
   
 };
