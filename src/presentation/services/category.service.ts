@@ -1,4 +1,4 @@
-import { CategortModel } from "../../data";
+import { CategoryModel } from "../../data";
 import { CreateCategoryDto, CustomError, PaginationDto, UserEntity } from "../../domain";
 
 
@@ -10,12 +10,12 @@ export class CategoryService {
 
   async createCategory(createCategoryDto: CreateCategoryDto, user: UserEntity) {
 
-    const categoryExists = await CategortModel.findOne({name: createCategoryDto.name});
+    const categoryExists = await CategoryModel.findOne({name: createCategoryDto.name});
     if(categoryExists) throw CustomError.badRequest('Category already exists');
 
     try {
 
-      const category = new CategortModel({
+      const category = new CategoryModel({
         ...createCategoryDto,
         user: user.id,
       });
@@ -45,8 +45,8 @@ export class CategoryService {
       //   .limit(limit)
 
       const [total, categories] = await Promise.all([
-        CategortModel.countDocuments(),
-        await CategortModel.find()
+        CategoryModel.countDocuments(),
+        CategoryModel.find()
         .skip((page - 1) * limit)
         .limit(limit)
       ])

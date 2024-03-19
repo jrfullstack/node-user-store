@@ -32,4 +32,18 @@ const productSchema = new mongoose.Schema({
 
 });
 
+productSchema.set('toJSON', {
+  // colocar el id del nuevo producto sin _id la barra baja
+  virtuals: true,
+
+  // quita el numero de versiones
+  versionKey: false,
+
+  // modifica los campos directos de mi modelo
+  transform: function(doc, ret, options) {
+    delete ret._id;
+  },
+
+})
+
 export const ProductModel = mongoose.model('Product', productSchema);

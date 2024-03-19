@@ -36,4 +36,19 @@ const userSchema = new mongoose.Schema({
 
 });
 
+userSchema.set('toJSON', {
+  // colocar el id del nuevo producto sin _id la barra baja
+  virtuals: true,
+
+  // quita el numero de versiones
+  versionKey: false,
+
+  // modifica los campos directos de mi modelo
+  transform: function(doc, ret, options) {
+    delete ret._id;
+    delete ret.password;
+  },
+
+});
+
 export const UserModel = mongoose.model('User', userSchema);
